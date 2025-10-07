@@ -1,0 +1,19 @@
+import psutil
+import time
+
+class BlackMambaContextMonitor:
+    def __init__(self):
+        self.active_apps = []
+        self.workflow_states = {}
+        
+    def detect_workflow_context(self):
+        """Detecta si estás en modo: Coding, Music, Design, etc."""
+        apps = self.get_active_applications()
+        
+        contexts = {
+            'coding': ['vscode', 'terminal', 'github'],
+            'music': ['suno', 'soundcloud', 'garageband'],
+            'design': ['blender', 'figma', 'photoshop']
+        }
+        
+        return self.analyze_context_patterns(apps, contexts)

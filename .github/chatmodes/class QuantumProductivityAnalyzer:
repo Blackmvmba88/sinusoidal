@@ -1,0 +1,12 @@
+class QuantumProductivityAnalyzer:
+    def detect_flow_state(self, keyboard_rhythm, mouse_precision):
+        """Detecta estados de flow cuántico"""
+        
+        flow_indicators = {
+            'deep_focus': keyboard_rhythm > 0.8 and mouse_precision > 0.9,
+            'creative_exploration': mouse_movement_variety > 0.7,
+            'debugging_mode': keyboard_shortcuts_frequency > 0.6,
+            'contemplation': low_activity_with_app_switches
+        }
+        
+        return self.quantum_state_classification(flow_indicators)

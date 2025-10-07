@@ -1,0 +1,18 @@
+import pynput
+from pynput import keyboard, mouse
+import json
+from datetime import datetime
+
+class LuxorKeyboardObserver:
+    def __init__(self):
+        self.patterns = []
+        self.current_session = {}
+        
+    def on_key_press(self, key):
+        # Analiza patrones de programación
+        self.detect_coding_patterns(key)
+        self.analyze_shortcuts(key)
+        
+    def on_mouse_move(self, x, y):
+        # Trackea flujos creativos en apps
+        self.creative_movement_analysis(x, y)

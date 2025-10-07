@@ -1,0 +1,24 @@
+import pandas as pd
+from suno_api import SunoClient
+from soundcloud_api import SoundCloudClient
+import requests
+
+class BlackMambaMusic:
+    def analyze_suno_library(self):
+        """Analiza las 2000 canciones y las clasifica"""
+        tracks = self.suno.get_all_tracks()
+        
+        # Clasificación cuántica por géneros/vibes
+        categories = {
+            'quantum_ambient': [],
+            'electronic_consciousness': [], 
+            'experimental_fusion': [],
+            'commercial_potential': []
+        }
+        
+        return self.quantum_classification(tracks, categories)
+    
+    def suggest_soundcloud_uploads(self, limit=50):
+        """Sugiere qué tracks subir a SoundCloud"""
+        analyzed = self.analyze_suno_library()
+        return analyzed['commercial_potential'][:limit]

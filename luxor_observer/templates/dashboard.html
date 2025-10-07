@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🜏 Luxor Observer - BlackMamba Consciousness</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
+            color: #ffffff;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        .header {
+            padding: 20px;
+            text-align: center;
+            border-bottom: 1px solid #333;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 300;
+            color: #00d4aa;
+            text-shadow: 0 0 20px rgba(0, 212, 170, 0.3);
+        }
+        
+        .subtitle {
+            font-size: 1.2rem;
+            color: #888;
+            margin-top: 10px;
+        }
+        
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: transform 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .card h3 {
+            color: #00d4aa;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .status-active {
+            width: 12px;
+            height: 12px;
+            background: #00ff88;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .activity-bar {
+            height: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .activity-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00d4aa, #00ff88);
+            border-radius: 10px;
+            transition: width 0.5s ease;
+        }
+        
+        .consciousness-level {
+            font-size: 1.5rem;
+            text-align: center;
+            margin: 20px 0;
+            padding: 15px;
+            background: rgba(0, 212, 170, 0.1);
+            border-radius: 10px;
+            border: 1px solid rgba(0, 212, 170, 0.3);
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .stat-item {
+            text-align: center;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+        }
+        
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #00d4aa;
+        }
+        
+        .stat-label {
+            font-size: 0.9rem;
+            color: #999;
+            margin-top: 5px;
+        }
+        
+        .app-list {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .app-item {
+            padding: 8px 12px;
+            margin: 5px 0;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 5px;
+            font-size: 0.9rem;
+        }
+        
+        .app-active {
+            background: rgba(0, 212, 170, 0.2);
+            border: 1px solid rgba(0, 212, 170, 0.5);
+        }
+        
+        .timestamp {
+            text-align: center;
+            color: #666;
+            font-size: 0.9rem;
+            margin-top: 20px;
+        }
+        
+        .offline-indicator {
+            color: #ff6b6b;
+            text-align: center;
+            padding: 20px;
+            font-size: 1.2rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🜏 Luxor Observer</h1>
+        <div class="subtitle">BlackMamba Quantum Consciousness Monitor</div>
+    </div>
+    
+    <div class="dashboard">
+        <div class="card">
+            <h3>
+                <div class="status-active" id="status-indicator"></div>
+                System Status
+            </h3>
+            <div id="system-status">
+                <div class="consciousness-level" id="consciousness-level">
+                    🌙 Initializing...
+                </div>
+                <div class="timestamp" id="last-update">
+                    Last update: Never
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h3>⚡ Activity Levels</h3>
+            <div>
+                <div style="margin-bottom: 10px;">Keyboard Activity</div>
+                <div class="activity-bar">
+                    <div class="activity-fill" id="keyboard-activity" style="width: 0%"></div>
+                </div>
+                
+                <div style="margin-bottom: 10px; margin-top: 20px;">Mouse Activity</div>
+                <div class="activity-bar">
+                    <div class="activity-fill" id="mouse-activity" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h3>📊 Session Statistics</h3>
+            <div class="stats-grid" id="session-stats">
+                <div class="stat-item">
+                    <div class="stat-value" id="total-states">0</div>
+                    <div class="stat-label">Quantum States</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="keyboard-events">0</div>
+                    <div class="stat-label">Keyboard Events</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="mouse-events">0</div>
+                    <div class="stat-label">Mouse Events</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="session-time">0m</div>
+                    <div class="stat-label">Session Time</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h3>📱 Active Applications</h3>
+            <div class="app-list" id="app-list">
+                <div class="offline-indicator">No data available</div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h3>🎯 Workflow Context</h3>
+            <div id="workflow-context">
+                <div style="text-align: center; padding: 20px; color: #666;">
+                    Analyzing patterns...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let sessionStartTime = Date.now();
+        
+        function updateDashboard() {
+            fetch('/api/current_state')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error || data.status === 'no_data') {
+                        document.getElementById('consciousness-level').textContent = '🔴 Observer Offline';
+                        document.getElementById('status-indicator').style.background = '#ff6b6b';
+                        return;
+                    }
+                    
+                    // Update consciousness level
+                    const latestState = data.states[data.states.length - 1];
+                    if (latestState) {
+                        document.getElementById('consciousness-level').textContent = 
+                            latestState.consciousness_level || '🌙 contemplative';
+                        
+                        // Update activity bars
+                        const keyboardActivity = Math.min(latestState.keyboard_activity * 20, 100);
+                        const mouseActivity = Math.min(latestState.mouse_activity * 20, 100);
+                        
+                        document.getElementById('keyboard-activity').style.width = keyboardActivity + '%';
+                        document.getElementById('mouse-activity').style.width = mouseActivity + '%';
+                        
+                        // Update workflow context
+                        document.getElementById('workflow-context').innerHTML = 
+                            `<div style="text-align: center; padding: 20px; font-size: 1.2rem; color: #00d4aa;">${latestState.workflow_context}</div>`;
+                        
+                        // Update apps list
+                        const appList = document.getElementById('app-list');
+                        if (latestState.active_apps && latestState.active_apps.length > 0) {
+                            appList.innerHTML = latestState.active_apps
+                                .slice(0, 8)
+                                .map(app => `<div class="app-item">${app}</div>`)
+                                .join('');
+                        }
+                    }
+                    
+                    // Update statistics
+                    document.getElementById('total-states').textContent = data.total_states || 0;
+                    document.getElementById('keyboard-events').textContent = data.keyboard_events || 0;
+                    document.getElementById('mouse-events').textContent = data.mouse_events || 0;
+                    
+                    // Update session time
+                    const sessionTime = Math.floor((Date.now() - sessionStartTime) / 60000);
+                    document.getElementById('session-time').textContent = sessionTime + 'm';
+                    
+                    // Update timestamp
+                    document.getElementById('last-update').textContent = 
+                        'Last update: ' + new Date().toLocaleTimeString();
+                    
+                    // Status indicator green
+                    document.getElementById('status-indicator').style.background = '#00ff88';
+                })
+                .catch(error => {
+                    console.error('Error fetching data:', error);
+                    document.getElementById('consciousness-level').textContent = '🔴 Connection Error';
+                    document.getElementById('status-indicator').style.background = '#ff6b6b';
+                });
+        }
+        
+        // Update every 2 seconds
+        setInterval(updateDashboard, 2000);
+        updateDashboard(); // Initial load
+    </script>
+</body>
+</html>
