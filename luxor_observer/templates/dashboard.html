@@ -163,6 +163,46 @@
             padding: 20px;
             font-size: 1.2rem;
         }
+        
+        /* Animaciones optimizadas */
+        .card {
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .activity-fill {
+            transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .consciousness-level {
+            transition: transform 0.2s ease;
+        }
+        
+        /* Estados de conexión */
+        .status-online {
+            background: #00ff88 !important;
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+        }
+        
+        .status-offline {
+            background: #ff6b6b !important;
+            box-shadow: 0 0 10px rgba(255, 107, 107, 0.5);
+        }
+        
+        /* Responsive optimizations */
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+                padding: 10px;
+            }
+            
+            .header h1 {
+                font-size: 1.8rem;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
 <body>
@@ -244,69 +284,160 @@
     <script>
         let sessionStartTime = Date.now();
         
+        let updateInProgress = false;
+        let connectionRetries = 0;
+        const maxRetries = 5;
+        
         function updateDashboard() {
-            fetch('/api/current_state')
-                .then(response => response.json())
+            // Evitar múltiples requests simultáneos
+            if (updateInProgress) return;
+            updateInProgress = true;
+            
+            fetch('/api/current_state', {
+                method: 'GET',
+                headers: {
+                    'Cache-Control': 'no-cache'
+                }
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+                    return response.json();
+                })
                 .then(data => {
+                    connectionRetries = 0; // Reset en conexión exitosa
+                    
                     if (data.error || data.status === 'no_data') {
-                        document.getElementById('consciousness-level').textContent = '🔴 Observer Offline';
-                        document.getElementById('status-indicator').style.background = '#ff6b6b';
+                        showOfflineStatus(data.message || 'Observer no disponible');
                         return;
                     }
                     
-                    // Update consciousness level
-                    const latestState = data.states[data.states.length - 1];
-                    if (latestState) {
-                        document.getElementById('consciousness-level').textContent = 
-                            latestState.consciousness_level || '🌙 contemplative';
-                        
-                        // Update activity bars
-                        const keyboardActivity = Math.min(latestState.keyboard_activity * 20, 100);
-                        const mouseActivity = Math.min(latestState.mouse_activity * 20, 100);
-                        
-                        document.getElementById('keyboard-activity').style.width = keyboardActivity + '%';
-                        document.getElementById('mouse-activity').style.width = mouseActivity + '%';
-                        
-                        // Update workflow context
-                        document.getElementById('workflow-context').innerHTML = 
-                            `<div style="text-align: center; padding: 20px; font-size: 1.2rem; color: #00d4aa;">${latestState.workflow_context}</div>`;
-                        
-                        // Update apps list
-                        const appList = document.getElementById('app-list');
-                        if (latestState.active_apps && latestState.active_apps.length > 0) {
-                            appList.innerHTML = latestState.active_apps
-                                .slice(0, 8)
-                                .map(app => `<div class="app-item">${app}</div>`)
-                                .join('');
-                        }
-                    }
-                    
-                    // Update statistics
-                    document.getElementById('total-states').textContent = data.total_states || 0;
-                    document.getElementById('keyboard-events').textContent = data.keyboard_events || 0;
-                    document.getElementById('mouse-events').textContent = data.mouse_events || 0;
-                    
-                    // Update session time
-                    const sessionTime = Math.floor((Date.now() - sessionStartTime) / 60000);
-                    document.getElementById('session-time').textContent = sessionTime + 'm';
-                    
-                    // Update timestamp
-                    document.getElementById('last-update').textContent = 
-                        'Last update: ' + new Date().toLocaleTimeString();
-                    
-                    // Status indicator green
-                    document.getElementById('status-indicator').style.background = '#00ff88';
+                    updateUI(data);
+                    showOnlineStatus();
                 })
                 .catch(error => {
                     console.error('Error fetching data:', error);
-                    document.getElementById('consciousness-level').textContent = '🔴 Connection Error';
-                    document.getElementById('status-indicator').style.background = '#ff6b6b';
+                    connectionRetries++;
+                    
+                    if (connectionRetries >= maxRetries) {
+                        showOfflineStatus('Conexión perdida - Reintentando...');
+                    }
+                })
+                .finally(() => {
+                    updateInProgress = false;
                 });
         }
         
-        // Update every 2 seconds
+        function updateUI(data) {
+            // Update consciousness level
+            const latestState = data.states && data.states[data.states.length - 1];
+            if (latestState) {
+                updateConsciousnessLevel(latestState.consciousness_level);
+                updateActivityBars(latestState.keyboard_activity, latestState.mouse_activity);
+                updateWorkflowContext(latestState.workflow_context);
+                updateAppsList(latestState.active_apps);
+            }
+            
+            // Update statistics
+            updateStatistics(data);
+            
+            // Update session metrics
+            if (data.session_stats) {
+                updateSessionMetrics(data.session_stats);
+            }
+            
+            // Update timestamp
+            document.getElementById('last-update').textContent = 
+                'Last update: ' + new Date().toLocaleTimeString();
+        }
+        
+        function updateConsciousnessLevel(level) {
+            const element = document.getElementById('consciousness-level');
+            element.textContent = level || '🌙 contemplative';
+            
+            // Animación sutil en cambios
+            element.style.transform = 'scale(1.05)';
+            setTimeout(() => {
+                element.style.transform = 'scale(1)';
+            }, 200);
+        }
+        
+        function updateActivityBars(keyboardActivity, mouseActivity) {
+            const kbBar = document.getElementById('keyboard-activity');
+            const mouseBar = document.getElementById('mouse-activity');
+            
+            const kbPercent = Math.min((keyboardActivity || 0) * 25, 100);
+            const mousePercent = Math.min((mouseActivity || 0) * 25, 100);
+            
+            kbBar.style.width = kbPercent + '%';
+            mouseBar.style.width = mousePercent + '%';
+        }
+        
+        function updateWorkflowContext(context) {
+            const contextMap = {
+                'coding': '💻 Coding',
+                'music': '🎵 Music',
+                'design': '🎨 Design',
+                'browsing': '🌍 Browsing',
+                'system': '⚙️ System',
+                'general': '🌌 General'
+            };
+            
+            const displayText = contextMap[context] || context || 'Unknown';
+            document.getElementById('workflow-context').innerHTML = 
+                `<div style="text-align: center; padding: 20px; font-size: 1.2rem; color: #00d4aa;">${displayText}</div>`;
+        }
+        
+        function updateAppsList(apps) {
+            const appList = document.getElementById('app-list');
+            if (apps && apps.length > 0) {
+                appList.innerHTML = apps
+                    .slice(0, 10)
+                    .map(app => `<div class="app-item">${app}</div>`)
+                    .join('');
+            } else {
+                appList.innerHTML = '<div class="offline-indicator">No apps detected</div>';
+            }
+        }
+        
+        function updateStatistics(data) {
+            document.getElementById('total-states').textContent = data.total_states || 0;
+            document.getElementById('keyboard-events').textContent = data.keyboard_events || 0;
+            document.getElementById('mouse-events').textContent = data.mouse_events || 0;
+            
+            // Update session time
+            const sessionTime = Math.floor((Date.now() - sessionStartTime) / 60000);
+            document.getElementById('session-time').textContent = sessionTime + 'm';
+        }
+        
+        function updateSessionMetrics(stats) {
+            // Añadir métricas adicionales si están disponibles
+            if (stats.avg_keyboard_activity !== undefined) {
+                console.log('Session metrics:', stats);
+            }
+        }
+        
+        function showOnlineStatus() {
+            document.getElementById('status-indicator').style.background = '#00ff88';
+        }
+        
+        function showOfflineStatus(message) {
+            document.getElementById('consciousness-level').textContent = '🔴 ' + message;
+            document.getElementById('status-indicator').style.background = '#ff6b6b';
+        }
+        
+        // Update every 2 seconds con manejo inteligente de errores
         setInterval(updateDashboard, 2000);
         updateDashboard(); // Initial load
+        
+        // Reconectar automáticamente cuando la pestaña vuelve a estar visible
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) {
+                connectionRetries = 0;
+                updateDashboard();
+            }
+        });
     </script>
 </body>
 </html>
