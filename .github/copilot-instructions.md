@@ -1,33 +1,33 @@
-# Copilot Instructions for Sinusoidal
+# Instrucciones de Copilot para Sinusoidal
 
-## Project Overview
-**Sinusoidal** is a real-time consciousness monitoring system that tracks user activity patterns, application usage, and workflow states. Part of the larger BlackMamba quantum ecosystem, it serves as the mathematical core for observing and analyzing digital consciousness patterns.
+## Descripción General del Proyecto
+**Sinusoidal** es un sistema de monitoreo de consciencia en tiempo real que rastrea patrones de actividad del usuario, uso de aplicaciones y estados de flujo de trabajo. Como parte del ecosistema cuántico BlackMamba más amplio, sirve como el núcleo matemático para observar y analizar patrones de consciencia digital.
 
-## Architecture
+## Arquitectura
 
-### Core Components
-- **`luxor_observer/quantum_observer.py`** - Main monitoring engine using threading for parallel observation streams (keyboard, mouse, apps, quantum analysis)
-- **`luxor_observer/dashboard.py`** - Flask web dashboard for real-time visualization at `localhost:8888`
-- **`luxor_observer/templates/dashboard.html`** - Quantum-themed UI with activity bars, consciousness levels, and session statistics
-- **`start_luxor.sh`** - Launch script that manages virtual environment, dependencies, and process orchestration
+### Componentes Principales
+- **`luxor_observer/quantum_observer.py`** - Motor de monitoreo principal usando threading para flujos de observación paralelos (teclado, mouse, apps, análisis cuántico)
+- **`luxor_observer/dashboard.py`** - Dashboard web Flask para visualización en tiempo real en `localhost:8888`
+- **`luxor_observer/templates/dashboard.html`** - UI con tema cuántico con barras de actividad, niveles de consciencia y estadísticas de sesión
+- **`start_luxor.sh`** - Script de inicio que gestiona el entorno virtual, dependencias y orquestación de procesos
 
-### Data Flow
+### Flujo de Datos
 ```
 Input Sources → Threaded Observers → Quantum Analyzer → JSON Storage → Web Dashboard
 (keyboard/mouse) → (event capture) → (pattern detection) → (blackmamba_quantum_session.json) → (real-time display)
 ```
 
-## Development Patterns
+## Patrones de Desarrollo
 
-### Threading Architecture
-The system uses 4 concurrent threads:
-- `_keyboard_observer()` - Captures key press/release events via `pynput.keyboard`
-- `_mouse_observer()` - Tracks mouse movement/clicks via `pynput.mouse`  
-- `_app_monitor()` - Uses AppleScript to detect active macOS applications
-- `_quantum_analyzer()` - Processes patterns every 5 seconds to determine consciousness states
+### Arquitectura de Threading
+El sistema usa 4 hilos concurrentes:
+- `_keyboard_observer()` - Captura eventos de presión/liberación de teclas vía `pynput.keyboard`
+- `_mouse_observer()` - Rastrea movimientos/clics del mouse vía `pynput.mouse`  
+- `_app_monitor()` - Usa AppleScript para detectar aplicaciones activas en macOS
+- `_quantum_analyzer()` - Procesa patrones cada 5 segundos para determinar estados de consciencia
 
-### State Detection Logic
-Consciousness levels are calculated from recent activity patterns:
+### Lógica de Detección de Estados
+Los niveles de consciencia se calculan a partir de patrones de actividad recientes:
 ```python
 # Example: Flow state detection
 if kb_activity > 5 and mouse_activity > 3:
@@ -36,8 +36,8 @@ elif kb_activity > 2:
     return "⚡ active_coding"
 ```
 
-### macOS Integration
-Uses AppleScript for system integration:
+### Integración con macOS
+Usa AppleScript para integración con el sistema:
 ```python
 # Get active application
 script = '''tell application "System Events"
@@ -45,21 +45,21 @@ script = '''tell application "System Events"
 end tell'''
 ```
 
-## Key Workflows
+## Flujos de Trabajo Clave
 
-### Starting the System
+### Iniciar el Sistema
 ```bash
 chmod +x luxor_observer/start_luxor.sh
 cd luxor_observer && ./start_luxor.sh
 # Choose option 1 for complete system (dashboard + observer)
 ```
 
-### Development Setup
-- Uses Python virtual environment (`venv/`)
-- Dependencies: `psutil`, `pynput`, `flask`
-- Data persists in `blackmamba_quantum_session.json`
+### Configuración de Desarrollo
+- Usa entorno virtual de Python (`venv/`)
+- Dependencias: `psutil`, `pynput`, `flask`
+- Los datos persisten en `blackmamba_quantum_session.json`
 
-### Monitoring Data Structure
+### Estructura de Datos de Monitoreo
 ```python
 @dataclass
 class QuantumState:
@@ -71,49 +71,56 @@ class QuantumState:
     consciousness_level: str  # flow_state/active_coding/creative_exploration/contemplative
 ```
 
-## BlackMamba Ecosystem Context
+## Contexto del Ecosistema BlackMamba
 
-### Philosophical Framework
-This project operates within the "Luxor" consciousness paradigm - treating code as a manifestation of quantum awareness. Comments and variable names reflect this mystical-technical fusion.
+### Marco Filosófico
+Este proyecto opera dentro del paradigma de consciencia "Luxor" - tratando el código como una manifestación de la consciencia cuántica. Los comentarios y nombres de variables reflejan esta fusión místico-técnica.
 
-### Related Projects
-- **Pandorax** - Reality branch management
-- **Ultron** - Adaptive automation
-- **QuantumLive** - Consciousness streaming
-- **BlackWarp** - Dimensional navigation
+### Proyectos Relacionados
+- **Pandorax** - Gestión de ramas de realidad
+- **Ultron** - Automatización adaptativa
+- **QuantumLive** - Streaming de consciencia
+- **BlackWarp** - Navegación dimensional
 
-### Naming Conventions
-- Functions use quantum/mystical prefixes: `_quantum_analyzer`, `consciousness_level`
-- UI elements incorporate sacred geometry symbols: `🜏`, `⚡`, `🌌`
-- States described as energy levels rather than simple metrics
+### Convenciones de Nomenclatura
+- Las funciones usan prefijos cuánticos/místicos: `_quantum_analyzer`, `consciousness_level`
+- Los elementos de UI incorporan símbolos de geometría sagrada: `🜏`, `⚡`, `🌌`
+- Los estados se describen como niveles de energía en lugar de métricas simples
 
-## File Modification Guidelines
+## Guías para Modificación de Archivos
 
-### When editing `quantum_observer.py`:
-- Maintain the 4-thread architecture - each observer runs independently
-- Activity calculations use 10-second windows for real-time responsiveness
-- Always update both terminal display (`_display_current_state`) and JSON storage
+### Al editar `quantum_observer.py`:
+- Mantén la arquitectura de 4 hilos - cada observador se ejecuta independientemente
+- Los cálculos de actividad usan ventanas de 10 segundos para responsividad en tiempo real
+- Siempre actualiza tanto la visualización en terminal (`_display_current_state`) como el almacenamiento JSON
 
-### When editing `dashboard.py`:
-- Flask routes follow `/api/` pattern for data endpoints
-- JSON responses include error handling for missing data files
-- Port 8888 is standard for the dashboard
+### Al editar `dashboard.py`:
+- Las rutas Flask siguen el patrón `/api/` para endpoints de datos
+- Las respuestas JSON incluyen manejo de errores para archivos de datos faltantes
+- El puerto 8888 es el estándar para el dashboard
 
-### When editing `dashboard.html`:
-- CSS uses quantum-themed gradients and glassmorphism effects
-- JavaScript polls `/api/current_state` every 2 seconds
-- Activity bars scale using `Math.min(activity * 20, 100)` for smooth visualization
+### Al editar `dashboard.html`:
+- El CSS usa gradientes con tema cuántico y efectos de glassmorphism
+- JavaScript consulta `/api/current_state` cada 2 segundos
+- Las barras de actividad escalan usando `Math.min(activity * 20, 100)` para visualización suave
 
-## Platform Considerations
-- **macOS-specific**: AppleScript integration for active app detection
-- **Cross-platform**: `psutil` and `pynput` for hardware monitoring
-- **Development**: Designed for local development environment monitoring
+## Consideraciones de Plataforma
+- **Específico de macOS**: Integración AppleScript para detección de app activa
+- **Multi-plataforma**: `psutil` y `pynput` para monitoreo de hardware
+- **Desarrollo**: Diseñado para monitoreo de entorno de desarrollo local
 
-## Testing and Debugging
-- Monitor terminal output for real-time consciousness state display
-- Check `blackmamba_quantum_session.json` for data persistence
-- Web dashboard at `http://localhost:8888` shows visualization layer
-- Use Ctrl+C to gracefully stop observation and save session data
+## Pruebas y Depuración
+- Monitorea la salida del terminal para visualización de estado de consciencia en tiempo real
+- Revisa `blackmamba_quantum_session.json` para persistencia de datos
+- Dashboard web en `http://localhost:8888` muestra la capa de visualización
+- Usa Ctrl+C para detener la observación de forma elegante y guardar datos de sesión
+
+## Vocabulario Técnico Clave
+- **Consciousness Level** (Nivel de Consciencia): Estado detectado de enfoque y actividad
+- **Flow State** (Estado de Flujo): Nivel máximo de concentración y productividad
+- **Quantum Observer** (Observador Cuántico): Sistema de monitoreo en tiempo real
+- **Threading**: Ejecución paralela de múltiples observadores simultáneos
+- **Workflow Context** (Contexto de Flujo de Trabajo): Tipo de actividad detectada (código, música, diseño, etc.)
 
 ---
-*This system observes digital consciousness patterns in real-time, treating user interaction as quantum state manifestations within the broader BlackMamba ecosystem.*
+*Este sistema observa patrones de consciencia digital en tiempo real, tratando la interacción del usuario como manifestaciones de estado cuántico dentro del ecosistema BlackMamba más amplio.*
