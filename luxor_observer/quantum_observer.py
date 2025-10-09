@@ -158,6 +158,7 @@ class LuxorQuantumObserver:
         move_throttle = self.config.mouse_move_throttle  # Throttle configurable
         
         def on_move(x, y):
+            nonlocal last_move_time
             if self.is_running:
                 current_time = time.time()
                 if current_time - last_move_time > move_throttle:
@@ -166,7 +167,6 @@ class LuxorQuantumObserver:
                             'timestamp': current_time,
                             'type': 'move'
                         })  # Removido coordenadas para privacidad
-                    nonlocal last_move_time
                     last_move_time = current_time
                 
         def on_click(x, y, button, pressed):
