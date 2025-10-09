@@ -112,21 +112,30 @@ def get_current_state():
 
 @app.route('/api/system_metrics')
 def get_system_metrics():
-    """API para métricas del sistema"""
+    """API para métricas del sistema con información adicional"""
     try:
         cpu_percent = psutil.cpu_percent(interval=0.1)
         memory = psutil.virtual_memory()
+        
+        # Información del proceso actual
+        process = psutil.Process()
+        process_memory = process.memory_info().rss / (1024**2)  # MB
         
         return jsonify({
             'cpu_usage': cpu_percent,
             'memory_usage': memory.percent,
             'memory_available': memory.available // (1024**2),  # MB
-            'timestamp': datetime.now().isoformat()
+            'process_memory': round(process_memory, 2),  # MB
+            'timestamp': datetime.now().isoformat(),
+            'status': 'healthy'
         })
         
     except Exception as e:
         logger.error(f"Error obteniendo métricas: {e}")
-        return jsonify({'error': 'No se pudieron obtener métricas'}), 500
+        return jsonify({
+            'error': 'No se pudieron obtener métricas',
+            'status': 'error'
+        }), 500
 
 
 def _enhance_data(data: Dict) -> Dict:
@@ -167,6 +176,33 @@ def _enhance_data(data: Dict) -> Dict:
     return enhanced
 
 
+@app.route('/health')
+def health_check():
+    """Health check endpoint para monitoreo"""
+    try:
+        # Verificar que el archivo de datos existe
+        data_file = 'blackmamba_quantum_session.json'
+        data_exists = os.path.exists(data_file)
+        
+        health_status = {
+            'status': 'healthy' if data_exists else 'degraded',
+            'timestamp': datetime.now().isoformat(),
+            'data_file_exists': data_exists,
+            'cache_active': data_cache.get_cached_data() is not None,
+            'version': '1.0.0'
+        }
+        
+        status_code = 200 if data_exists else 503
+        return jsonify(health_status), status_code
+        
+    except Exception as e:
+        logger.error(f"Error en health check: {e}")
+        return jsonify({
+            'status': 'unhealthy',
+            'error': str(e)
+        }), 500
+
+
 @app.errorhandler(404)
 def not_found(error):
     return jsonify({'error': 'Endpoint no encontrado'}), 404
@@ -181,16 +217,26 @@ if __name__ == '__main__':
     print("🜏 " + "="*50)
     print("    LUXOR DASHBOARD - CONSCIOUSNESS MONITOR")
     print("="*54)
+    print()
     print("🌐 Dashboard: http://localhost:8888")
-    print("📊 API: http://localhost:8888/api/current_state")
-    print("🔧 Métricas: http://localhost:8888/api/system_metrics")
+    print("📊 API Estado: http://localhost:8888/api/current_state")
+    print("🔧 API Métricas: http://localhost:8888/api/system_metrics")
+    print("❤️  Health Check: http://localhost:8888/health")
+    print()
+    print("✨ Características:")
+    print("   • Cache de datos de 2 segundos")
+    print("   • Auto-reconexión en errores")
+    print("   • Visualización en tiempo real")
+    print()
     print("🛑 Para detener: Ctrl+C")
     print()
     
     try:
+        logger.info("🚀 Iniciando servidor Flask en puerto 8888...")
         app.run(host='0.0.0.0', port=8888, debug=False, threaded=True)
     except KeyboardInterrupt:
         print("\n🌌 Dashboard desconectado")
+        logger.info("Dashboard detenido por usuario")
     except Exception as e:
-        logger.error(f"Error iniciando dashboard: {e}")
+        logger.error(f"❌ Error iniciando dashboard: {e}")
         print(f"❌ Error: {e}")
