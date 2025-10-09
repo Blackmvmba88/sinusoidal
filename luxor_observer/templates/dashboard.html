@@ -40,11 +40,17 @@
         
         .dashboard {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
             gap: 20px;
             padding: 20px;
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
+        }
+        
+        @media (min-width: 1200px) {
+            .dashboard {
+                grid-template-columns: repeat(3, 1fr);
+            }
         }
         
         .card {
@@ -381,6 +387,32 @@
                 </div>
             </div>
         </div>
+        
+        <div class="card">
+            <h3>📈 Session Analytics</h3>
+            <div id="session-analytics">
+                <div class="stat-item" style="margin-bottom: 10px;">
+                    <div class="stat-label">Average Activity</div>
+                    <div style="display: flex; justify-content: space-between; margin-top: 5px;">
+                        <span>⌨️ <span id="avg-keyboard">0.00</span>/s</span>
+                        <span>🖱 <span id="avg-mouse">0.00</span>/s</span>
+                    </div>
+                </div>
+                <div class="stat-item" style="margin-bottom: 10px;">
+                    <div class="stat-label">Peak Activity</div>
+                    <div style="display: flex; justify-content: space-between; margin-top: 5px;">
+                        <span>⌨️ <span id="peak-keyboard">0.00</span>/s</span>
+                        <span>🖱 <span id="peak-mouse">0.00</span>/s</span>
+                    </div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Context Distribution</div>
+                    <div id="context-distribution" style="margin-top: 10px; font-size: 0.9rem;">
+                        <div style="color: #666;">No data yet...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -462,6 +494,11 @@
             // Update session metrics
             if (data.session_stats) {
                 updateSessionMetrics(data.session_stats);
+            }
+            
+            // Update context distribution
+            if (data.context_analysis) {
+                updateContextDistribution(data.context_analysis);
             }
             
             // Update timestamp and connection quality
@@ -576,10 +613,53 @@
         }
         
         function updateSessionMetrics(stats) {
-            // Añadir métricas adicionales si están disponibles
+            // Actualizar métricas de sesión si están disponibles
             if (stats.avg_keyboard_activity !== undefined) {
-                console.log('Session metrics:', stats);
+                document.getElementById('avg-keyboard').textContent = 
+                    stats.avg_keyboard_activity.toFixed(2);
+                document.getElementById('avg-mouse').textContent = 
+                    stats.avg_mouse_activity.toFixed(2);
+                document.getElementById('peak-keyboard').textContent = 
+                    stats.peak_keyboard_activity.toFixed(2);
+                document.getElementById('peak-mouse').textContent = 
+                    stats.peak_mouse_activity.toFixed(2);
             }
+        }
+        
+        function updateContextDistribution(contextAnalysis) {
+            if (!contextAnalysis || Object.keys(contextAnalysis).length === 0) {
+                return;
+            }
+            
+            const container = document.getElementById('context-distribution');
+            const total = Object.values(contextAnalysis).reduce((a, b) => a + b, 0);
+            
+            const contextEmoji = {
+                'coding': '💻',
+                'music': '🎵',
+                'design': '🎨',
+                'browsing': '🌍',
+                'system': '⚙️',
+                'general': '🌌'
+            };
+            
+            let html = '';
+            for (const [context, count] of Object.entries(contextAnalysis)) {
+                const percentage = ((count / total) * 100).toFixed(0);
+                const emoji = contextEmoji[context] || '📌';
+                html += `
+                    <div style="margin: 5px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
+                            <span>${emoji} ${context}</span>
+                            <span>${percentage}%</span>
+                        </div>
+                        <div style="height: 4px; background: rgba(255, 255, 255, 0.1); border-radius: 2px; overflow: hidden;">
+                            <div style="width: ${percentage}%; height: 100%; background: linear-gradient(90deg, #00d4aa, #00ff88);"></div>
+                        </div>
+                    </div>
+                `;
+            }
+            container.innerHTML = html;
         }
         
         function showOnlineStatus() {
