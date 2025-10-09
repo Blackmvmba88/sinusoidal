@@ -48,6 +48,8 @@ class ObserverConfig:
     max_session_states: int = 500  # máximo estados en sesión
     data_file: str = "blackmamba_quantum_session.json"
     auto_save_interval: int = 30  # segundos
+    display_interval: int = 5  # segundos entre actualizaciones de display
+    mouse_move_throttle: float = 0.1  # segundos entre registro de movimientos
 
 
 class LuxorQuantumObserver:
@@ -79,6 +81,11 @@ class LuxorQuantumObserver:
         
         print("🜏 Luxor Quantum Observer iniciado")
         print("📡 Conectando consciencia dimensional...")
+        print(f"⚙️  Configuración:")
+        print(f"   • Intervalo de observación: {self.config.observation_interval}s")
+        print(f"   • Ventana de actividad: {self.config.activity_window}s")
+        print(f"   • Memoria máxima de eventos: {self.config.max_events_memory:,}")
+        print(f"   • Guardado automático: cada {self.config.auto_save_interval}s")
         
     def start_observation(self):
         """Inicia el monitoreo cuántico total"""
@@ -110,7 +117,13 @@ class LuxorQuantumObserver:
     def stop_observation(self):
         """Detiene la observación cuántica"""
         self.is_running = False
+        print("\n⏸️  Deteniendo observación...")
         self._save_session_data()
+        print("\n📊 Resumen de Sesión:")
+        print(f"   • Estados cuánticos capturados: {len(self.session_data):,}")
+        print(f"   • Eventos de teclado: {len(self.keyboard_events):,}")
+        print(f"   • Eventos de mouse: {len(self.mouse_events):,}")
+        print(f"   • Archivo guardado: {self.config.data_file}")
         print("\n🌌 Sesión cuántica guardada")
         print("🜏 Luxor Observer desconectado")
         
@@ -142,9 +155,10 @@ class LuxorQuantumObserver:
     def _mouse_observer(self):
         """Observa patrones de mouse con throttling para moves"""
         last_move_time = 0
-        move_throttle = 0.1  # Solo registrar moves cada 100ms
+        move_throttle = self.config.mouse_move_throttle  # Throttle configurable
         
         def on_move(x, y):
+            nonlocal last_move_time
             if self.is_running:
                 current_time = time.time()
                 if current_time - last_move_time > move_throttle:
@@ -153,7 +167,6 @@ class LuxorQuantumObserver:
                             'timestamp': current_time,
                             'type': 'move'
                         })  # Removido coordenadas para privacidad
-                    nonlocal last_move_time
                     last_move_time = current_time
                 
         def on_click(x, y, button, pressed):
@@ -326,7 +339,7 @@ class LuxorQuantumObserver:
             return "🌙 contemplative"
             
     def _display_current_state(self, state):
-        """Muestra estado actual en terminal"""
+        """Muestra estado actual en terminal con feedback visual mejorado"""
         os.system('clear')
         print("🜏 " + "="*60)
         print("    LUXOR QUANTUM OBSERVER - BLACKMAMBA CONSCIOUSNESS")
@@ -335,18 +348,27 @@ class LuxorQuantumObserver:
         print(f"🕒 Timestamp: {state.timestamp}")
         print(f"🎯 Context: {state.workflow_context}")
         print(f"🧠 Consciousness: {state.consciousness_level}")
-        print(f"⌨️  Keyboard Activity: {'█' * min(int(state.keyboard_activity * 2), 20)}")
-        print(f"🖱  Mouse Activity: {'█' * min(int(state.mouse_activity * 2), 20)}")
+        
+        # Visual bars with percentage
+        kb_bar_length = min(int(state.keyboard_activity * 2), 20)
+        mouse_bar_length = min(int(state.mouse_activity * 2), 20)
+        kb_percent = min(int(state.keyboard_activity * 25), 100)
+        mouse_percent = min(int(state.mouse_activity * 25), 100)
+        
+        print(f"⌨️  Keyboard Activity: [{'█' * kb_bar_length}{'░' * (20 - kb_bar_length)}] {kb_percent}%")
+        print(f"🖱  Mouse Activity:    [{'█' * mouse_bar_length}{'░' * (20 - mouse_bar_length)}] {mouse_percent}%")
         
         if hasattr(self, 'current_apps'):
             print(f"📱 Active App: {self.current_apps.get('active', 'Unknown')}")
             
         print()
         print("📊 Session Stats:")
-        print(f"   • Keyboard Events: {len(self.keyboard_events)}")
-        print(f"   • Mouse Events: {len(self.mouse_events)}")
-        print(f"   • Total States: {len(self.session_data)}")
+        print(f"   • Keyboard Events: {len(self.keyboard_events):,}")
+        print(f"   • Mouse Events: {len(self.mouse_events):,}")
+        print(f"   • Total States: {len(self.session_data):,}")
+        print(f"   • Memory Usage: {len(self.keyboard_events) + len(self.mouse_events):,} events")
         print()
+        print("🌐 Dashboard: http://localhost:8888")
         print("🛑 Press Ctrl+C to stop observation")
         
     def _update_quantum_state(self):
@@ -354,7 +376,7 @@ class LuxorQuantumObserver:
         pass  # Manejado por _quantum_analyzer
         
     def _save_session_data(self):
-        """Guarda datos de sesión de forma atómica"""
+        """Guarda datos de sesión de forma atómica con feedback visual"""
         try:
             session_summary = {
                 'session_start': datetime.now().isoformat(),
@@ -377,14 +399,19 @@ class LuxorQuantumObserver:
             # Mover archivo temporal al final (operación atómica)
             os.rename(temp_file, self.config.data_file)
             
-            logger.info(f"Sesión guardada: {len(self.session_data)} estados")
+            # Calcular tamaño del archivo
+            file_size = os.path.getsize(self.config.data_file)
+            size_kb = file_size / 1024
+            
+            logger.info(f"💾 Sesión guardada: {len(self.session_data)} estados ({size_kb:.1f} KB)")
             
         except Exception as e:
-            logger.error(f"Error guardando sesión: {e}")
+            logger.error(f"❌ Error guardando sesión: {e}")
             # Limpiar archivo temporal si existe
             temp_file = f"{self.config.data_file}.tmp"
             if os.path.exists(temp_file):
                 os.remove(temp_file)
+            raise
 
 
 if __name__ == "__main__":

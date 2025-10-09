@@ -40,11 +40,17 @@
         
         .dashboard {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
             gap: 20px;
             padding: 20px;
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
+        }
+        
+        @media (min-width: 1200px) {
+            .dashboard {
+                grid-template-columns: repeat(3, 1fr);
+            }
         }
         
         .card {
@@ -164,6 +170,76 @@
             font-size: 1.2rem;
         }
         
+        /* Loading spinner */
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(0, 212, 170, 0.3);
+            border-top-color: #00d4aa;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Progress indicator */
+        .progress-indicator {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #00d4aa, #00ff88);
+            transform: scaleX(0);
+            transform-origin: left;
+            animation: progress 2s ease-in-out infinite;
+            z-index: 1000;
+        }
+        
+        @keyframes progress {
+            0% { transform: scaleX(0); }
+            50% { transform: scaleX(0.7); }
+            100% { transform: scaleX(1); }
+        }
+        
+        /* Activity pulse effect */
+        .activity-pulse {
+            animation: activityPulse 0.5s ease;
+        }
+        
+        @keyframes activityPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        /* Notification toast */
+        .notification-toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 212, 170, 0.95);
+            color: #0a0a0a;
+            padding: 15px 20px;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0, 212, 170, 0.3);
+            font-weight: 600;
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+            z-index: 1000;
+        }
+        
+        .notification-toast.show {
+            transform: translateX(0);
+        }
+        
+        .notification-toast.error {
+            background: rgba(255, 107, 107, 0.95);
+            box-shadow: 0 5px 20px rgba(255, 107, 107, 0.3);
+        }
+        
         /* Animaciones optimizadas */
         .card {
             transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -171,10 +247,37 @@
         
         .activity-fill {
             transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .activity-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, 
+                transparent, 
+                rgba(255, 255, 255, 0.3), 
+                transparent
+            );
+            animation: shimmer 2s infinite;
+        }
+        
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
         }
         
         .consciousness-level {
-            transition: transform 0.2s ease;
+            transition: all 0.3s ease;
+        }
+        
+        .consciousness-level.updating {
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(0, 212, 170, 0.4);
         }
         
         /* Estados de conexión */
@@ -206,6 +309,8 @@
     </style>
 </head>
 <body>
+    <div class="progress-indicator" id="progress-indicator" style="display: none;"></div>
+    
     <div class="header">
         <h1>🜏 Luxor Observer</h1>
         <div class="subtitle">BlackMamba Quantum Consciousness Monitor</div>
@@ -223,6 +328,9 @@
                 </div>
                 <div class="timestamp" id="last-update">
                     Last update: Never
+                </div>
+                <div class="timestamp" id="connection-quality" style="margin-top: 10px; color: #00d4aa;">
+                    ⚡ Connection: Excellent
                 </div>
             </div>
         </div>
@@ -279,6 +387,32 @@
                 </div>
             </div>
         </div>
+        
+        <div class="card">
+            <h3>📈 Session Analytics</h3>
+            <div id="session-analytics">
+                <div class="stat-item" style="margin-bottom: 10px;">
+                    <div class="stat-label">Average Activity</div>
+                    <div style="display: flex; justify-content: space-between; margin-top: 5px;">
+                        <span>⌨️ <span id="avg-keyboard">0.00</span>/s</span>
+                        <span>🖱 <span id="avg-mouse">0.00</span>/s</span>
+                    </div>
+                </div>
+                <div class="stat-item" style="margin-bottom: 10px;">
+                    <div class="stat-label">Peak Activity</div>
+                    <div style="display: flex; justify-content: space-between; margin-top: 5px;">
+                        <span>⌨️ <span id="peak-keyboard">0.00</span>/s</span>
+                        <span>🖱 <span id="peak-mouse">0.00</span>/s</span>
+                    </div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Context Distribution</div>
+                    <div id="context-distribution" style="margin-top: 10px; font-size: 0.9rem;">
+                        <div style="color: #666;">No data yet...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -287,11 +421,24 @@
         let updateInProgress = false;
         let connectionRetries = 0;
         const maxRetries = 5;
+        let lastUpdateTime = 0;
+        
+        function showProgress() {
+            const indicator = document.getElementById('progress-indicator');
+            indicator.style.display = 'block';
+        }
+        
+        function hideProgress() {
+            const indicator = document.getElementById('progress-indicator');
+            indicator.style.display = 'none';
+        }
         
         function updateDashboard() {
             // Evitar múltiples requests simultáneos
             if (updateInProgress) return;
             updateInProgress = true;
+            
+            showProgress();
             
             fetch('/api/current_state', {
                 method: 'GET',
@@ -326,6 +473,8 @@
                 })
                 .finally(() => {
                     updateInProgress = false;
+                    hideProgress();
+                    lastUpdateTime = Date.now();
                 });
         }
         
@@ -347,20 +496,58 @@
                 updateSessionMetrics(data.session_stats);
             }
             
-            // Update timestamp
+            // Update context distribution
+            if (data.context_analysis) {
+                updateContextDistribution(data.context_analysis);
+            }
+            
+            // Update timestamp and connection quality
             document.getElementById('last-update').textContent = 
                 'Last update: ' + new Date().toLocaleTimeString();
+            
+            // Calculate connection quality based on retry count
+            updateConnectionQuality();
+        }
+        
+        function updateConnectionQuality() {
+            const qualityElement = document.getElementById('connection-quality');
+            const timeSinceUpdate = Date.now() - lastUpdateTime;
+            
+            let quality, icon, color;
+            if (connectionRetries === 0 && timeSinceUpdate < 3000) {
+                quality = 'Excellent';
+                icon = '⚡';
+                color = '#00ff88';
+            } else if (connectionRetries < 2) {
+                quality = 'Good';
+                icon = '✓';
+                color = '#00d4aa';
+            } else if (connectionRetries < maxRetries) {
+                quality = 'Fair';
+                icon = '⚠';
+                color = '#ffaa00';
+            } else {
+                quality = 'Poor';
+                icon = '✗';
+                color = '#ff6b6b';
+            }
+            
+            qualityElement.innerHTML = `${icon} Connection: <span style="color: ${color};">${quality}</span>`;
         }
         
         function updateConsciousnessLevel(level) {
             const element = document.getElementById('consciousness-level');
-            element.textContent = level || '🌙 contemplative';
+            const newLevel = level || '🌙 contemplative';
             
-            // Animación sutil en cambios
-            element.style.transform = 'scale(1.05)';
-            setTimeout(() => {
-                element.style.transform = 'scale(1)';
-            }, 200);
+            // Only animate if level changed
+            if (element.textContent !== newLevel) {
+                element.classList.add('updating');
+                element.textContent = newLevel;
+                
+                setTimeout(() => {
+                    element.classList.remove('updating');
+                }, 300);
+            }
         }
         
         function updateActivityBars(keyboardActivity, mouseActivity) {
@@ -369,6 +556,20 @@
             
             const kbPercent = Math.min((keyboardActivity || 0) * 25, 100);
             const mousePercent = Math.min((mouseActivity || 0) * 25, 100);
+            
+            // Add pulse effect when activity increases significantly
+            const kbOldWidth = parseFloat(kbBar.style.width) || 0;
+            const mouseOldWidth = parseFloat(mouseBar.style.width) || 0;
+            
+            if (kbPercent > kbOldWidth + 10) {
+                kbBar.parentElement.classList.add('activity-pulse');
+                setTimeout(() => kbBar.parentElement.classList.remove('activity-pulse'), 500);
+            }
+            
+            if (mousePercent > mouseOldWidth + 10) {
+                mouseBar.parentElement.classList.add('activity-pulse');
+                setTimeout(() => mouseBar.parentElement.classList.remove('activity-pulse'), 500);
+            }
             
             kbBar.style.width = kbPercent + '%';
             mouseBar.style.width = mousePercent + '%';
@@ -412,19 +613,73 @@
         }
         
         function updateSessionMetrics(stats) {
-            // Añadir métricas adicionales si están disponibles
+            // Actualizar métricas de sesión si están disponibles
             if (stats.avg_keyboard_activity !== undefined) {
-                console.log('Session metrics:', stats);
+                document.getElementById('avg-keyboard').textContent = 
+                    stats.avg_keyboard_activity.toFixed(2);
+                document.getElementById('avg-mouse').textContent = 
+                    stats.avg_mouse_activity.toFixed(2);
+                document.getElementById('peak-keyboard').textContent = 
+                    stats.peak_keyboard_activity.toFixed(2);
+                document.getElementById('peak-mouse').textContent = 
+                    stats.peak_mouse_activity.toFixed(2);
             }
         }
         
+        function updateContextDistribution(contextAnalysis) {
+            if (!contextAnalysis || Object.keys(contextAnalysis).length === 0) {
+                return;
+            }
+            
+            const container = document.getElementById('context-distribution');
+            const total = Object.values(contextAnalysis).reduce((a, b) => a + b, 0);
+            
+            const contextEmoji = {
+                'coding': '💻',
+                'music': '🎵',
+                'design': '🎨',
+                'browsing': '🌍',
+                'system': '⚙️',
+                'general': '🌌'
+            };
+            
+            let html = '';
+            for (const [context, count] of Object.entries(contextAnalysis)) {
+                const percentage = ((count / total) * 100).toFixed(0);
+                const emoji = contextEmoji[context] || '📌';
+                html += `
+                    <div style="margin: 5px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
+                            <span>${emoji} ${context}</span>
+                            <span>${percentage}%</span>
+                        </div>
+                        <div style="height: 4px; background: rgba(255, 255, 255, 0.1); border-radius: 2px; overflow: hidden;">
+                            <div style="width: ${percentage}%; height: 100%; background: linear-gradient(90deg, #00d4aa, #00ff88);"></div>
+                        </div>
+                    </div>
+                `;
+            }
+            container.innerHTML = html;
+        }
+        
         function showOnlineStatus() {
-            document.getElementById('status-indicator').style.background = '#00ff88';
+            const indicator = document.getElementById('status-indicator');
+            indicator.style.background = '#00ff88';
+            indicator.style.boxShadow = '0 0 10px rgba(0, 255, 136, 0.5)';
         }
         
         function showOfflineStatus(message) {
-            document.getElementById('consciousness-level').textContent = '🔴 ' + message;
-            document.getElementById('status-indicator').style.background = '#ff6b6b';
+            const indicator = document.getElementById('status-indicator');
+            const level = document.getElementById('consciousness-level');
+            
+            level.textContent = '🔴 ' + message;
+            indicator.style.background = '#ff6b6b';
+            indicator.style.boxShadow = '0 0 10px rgba(255, 107, 107, 0.5)';
+            
+            // Add loading spinner if reconnecting
+            if (message.includes('Reintentando')) {
+                level.innerHTML = '🔴 ' + message + ' <span class="loading-spinner"></span>';
+            }
         }
         
         // Update every 2 seconds con manejo inteligente de errores
@@ -436,8 +691,43 @@
             if (!document.hidden) {
                 connectionRetries = 0;
                 updateDashboard();
+                showNotification('🔄 Reconnected to Observer', false);
             }
         });
+        
+        // Notification system
+        function showNotification(message, isError = false) {
+            // Remove existing notification if any
+            const existing = document.querySelector('.notification-toast');
+            if (existing) {
+                existing.remove();
+            }
+            
+            const toast = document.createElement('div');
+            toast.className = 'notification-toast' + (isError ? ' error' : '');
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            
+            // Trigger animation
+            setTimeout(() => toast.classList.add('show'), 10);
+            
+            // Auto-remove after 3 seconds
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+        
+        // Show notification on first successful connection
+        let firstConnectionMade = false;
+        const originalUpdateUI = updateUI;
+        updateUI = function(data) {
+            originalUpdateUI(data);
+            if (!firstConnectionMade) {
+                firstConnectionMade = true;
+                showNotification('✅ Connected to Luxor Observer', false);
+            }
+        };
     </script>
 </body>
 </html>
