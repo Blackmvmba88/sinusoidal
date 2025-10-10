@@ -118,6 +118,23 @@ Input Sources → Threaded Observers → Quantum Analyzer → JSON Storage → W
 3. **App Monitor** - Uses AppleScript for macOS app detection
 4. **Quantum Analyzer** - Processes patterns every 5 seconds
 
+### Monitoring Tools
+
+For development and debugging, use the monitoring scripts in the `scripts/` directory:
+
+```bash
+# Start system with live log monitoring (recommended for development)
+./scripts/run_and_monitor.sh
+
+# Monitor endpoints and display changes in real-time
+./scripts/poll_monitor.py
+
+# Custom polling interval
+./scripts/poll_monitor.py --interval 5
+```
+
+See [scripts/README.md](scripts/README.md) for detailed documentation on monitoring tools.
+
 ## 🌌 BlackMamba Ecosystem
 
 Part of the larger consciousness monitoring framework:

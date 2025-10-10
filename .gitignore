@@ -42,6 +42,7 @@ ENV/
 luxor_observer/blackmamba_quantum_session.json
 luxor_observer/blackmamba_quantum_session.json.tmp
 *.log
+logs/
 
 # Temporary files
 *.tmp
