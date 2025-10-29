@@ -108,7 +108,9 @@ done
 if [ $INSTALL_FAILED -eq 1 ]; then
     echo ""
     echo "⚠️  Algunas dependencias no se pudieron instalar"
-    echo "   Intenta ejecutar: pip install -r requirements.txt"
+    if [ -f "requirements.txt" ]; then
+        echo "   Intenta ejecutar: pip install -r requirements.txt"
+    fi
     echo "   O manualmente: pip install $REQUIREMENTS"
     exit 1
 fi
