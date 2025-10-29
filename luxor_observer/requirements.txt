@@ -1,0 +1,9 @@
+# Luxor Quantum Observer Dependencies
+# Core monitoring and system utilities
+psutil>=5.9.0
+
+# Input device monitoring (keyboard and mouse)
+pynput>=1.7.6
+
+# Web dashboard framework
+flask>=2.3.0
