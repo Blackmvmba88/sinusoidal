@@ -47,8 +47,33 @@ else
     exit 1
 fi
 
-# Verificar e instalar dependencias con reintentos
+# Verificar e instalar dependencias
 echo "📚 Verificando dependencias..."
+
+# Intentar usar requirements.txt si existe
+if [ -f "requirements.txt" ]; then
+    echo "📄 Usando requirements.txt..."
+    max_retries=3
+    retry=0
+    while [ $retry -lt $max_retries ]; do
+        if pip install -q -r requirements.txt; then
+            echo "✅ Dependencias instaladas desde requirements.txt"
+            break
+        else
+            retry=$((retry + 1))
+            if [ $retry -lt $max_retries ]; then
+                echo "⚠️  Reintentando instalación ($retry/$max_retries)..."
+                sleep 2
+            else
+                echo "❌ Error instalando dependencias desde requirements.txt"
+                echo "   Intentando instalación manual..."
+                break
+            fi
+        fi
+    done
+fi
+
+# Verificar cada paquete individualmente
 REQUIREMENTS="psutil>=5.9.0 pynput>=1.7.6 flask>=2.3.0"
 INSTALL_FAILED=0
 
@@ -83,7 +108,8 @@ done
 if [ $INSTALL_FAILED -eq 1 ]; then
     echo ""
     echo "⚠️  Algunas dependencias no se pudieron instalar"
-    echo "   Intenta ejecutar: pip install $REQUIREMENTS"
+    echo "   Intenta ejecutar: pip install -r requirements.txt"
+    echo "   O manualmente: pip install $REQUIREMENTS"
     exit 1
 fi
 
