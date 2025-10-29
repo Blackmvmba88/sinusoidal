@@ -53,7 +53,7 @@ class QuantumState:
 
 @dataclass
 class ObserverConfig:
-    """Configuración del observer"""
+    """Configuración del observer con validación de seguridad"""
 
     observation_interval: float = 2.0
     activity_window: int = 10  # segundos para calcular actividad
@@ -63,6 +63,36 @@ class ObserverConfig:
     auto_save_interval: int = 30
     display_interval: float = 2.0
     mouse_move_throttle: float = 0.25
+
+    def __post_init__(self):
+        """Valida la configuración para prevenir valores peligrosos"""
+        # Validar intervalos positivos
+        if self.observation_interval <= 0:
+            raise ValueError("observation_interval debe ser > 0")
+        if self.display_interval <= 0:
+            raise ValueError("display_interval debe ser > 0")
+        if self.mouse_move_throttle < 0:
+            raise ValueError("mouse_move_throttle debe ser >= 0")
+        
+        # Validar límites de memoria razonables
+        if self.max_events_memory < 10 or self.max_events_memory > 100000:
+            raise ValueError("max_events_memory debe estar entre 10 y 100000")
+        if self.max_session_states < 10 or self.max_session_states > 10000:
+            raise ValueError("max_session_states debe estar entre 10 y 10000")
+        
+        # Validar ventana de actividad
+        if self.activity_window < 1 or self.activity_window > 300:
+            raise ValueError("activity_window debe estar entre 1 y 300 segundos")
+        
+        # Validar intervalo de guardado
+        if self.auto_save_interval < 5 or self.auto_save_interval > 3600:
+            raise ValueError("auto_save_interval debe estar entre 5 y 3600 segundos")
+        
+        # Validar nombre de archivo seguro (prevenir path traversal)
+        if not self.data_file or '..' in self.data_file or '/' in self.data_file:
+            raise ValueError("data_file debe ser un nombre de archivo simple sin rutas")
+        
+        logger.debug("Configuración validada correctamente")
 
 
 class LuxorQuantumObserver:

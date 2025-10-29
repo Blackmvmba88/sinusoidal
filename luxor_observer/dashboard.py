@@ -19,7 +19,76 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
+
+# Configuración de seguridad para Flask
 app.config['JSON_SORT_KEYS'] = False
+app.config['JSON_AS_ASCII'] = False
+# Deshabilitar debug mode en producción (ya está por defecto)
+app.config['DEBUG'] = False
+# Prevenir clickjacking
+app.config['SESSION_COOKIE_SECURE'] = False  # True en producción con HTTPS
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+# Limitar tamaño de contenido para prevenir DoS
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max
+
+# Headers de seguridad
+@app.after_request
+def add_security_headers(response):
+    """Agrega headers de seguridad a todas las respuestas"""
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    response.headers['Content-Security-Policy'] = "default-src 'self' 'unsafe-inline'"
+    return response
+
+
+# Rate limiting simple (en memoria)
+class SimpleRateLimiter:
+    """Rate limiter básico para prevenir abuso"""
+    
+    def __init__(self, max_requests: int = 100, window_seconds: int = 60):
+        self.max_requests = max_requests
+        self.window_seconds = window_seconds
+        self._requests: Dict[str, list] = {}
+        self._lock = Lock()
+    
+    def is_allowed(self, client_id: str) -> bool:
+        """Verifica si el cliente puede hacer una petición"""
+        now = time.time()
+        
+        with self._lock:
+            if client_id not in self._requests:
+                self._requests[client_id] = []
+            
+            # Limpiar peticiones antiguas
+            self._requests[client_id] = [
+                req_time for req_time in self._requests[client_id]
+                if now - req_time < self.window_seconds
+            ]
+            
+            # Verificar límite
+            if len(self._requests[client_id]) >= self.max_requests:
+                return False
+            
+            # Agregar petición actual
+            self._requests[client_id].append(now)
+            return True
+    
+    def cleanup_old_entries(self):
+        """Limpia entradas antiguas periódicamente"""
+        now = time.time()
+        with self._lock:
+            # Remover clientes sin actividad reciente
+            self._requests = {
+                client_id: times
+                for client_id, times in self._requests.items()
+                if times and (now - times[-1]) < self.window_seconds * 2
+            }
+
+
+# Instancias globales
+rate_limiter = SimpleRateLimiter(max_requests=100, window_seconds=60)
 
 
 # Cache para datos del dashboard
@@ -54,7 +123,17 @@ def dashboard():
 
 @app.route('/api/current_state')
 def get_current_state():
-    """API optimizada para obtener estado actual con cache"""
+    """API optimizada para obtener estado actual con cache y rate limiting"""
+    # Rate limiting
+    from flask import request
+    client_id = request.remote_addr or 'unknown'
+    if not rate_limiter.is_allowed(client_id):
+        return jsonify({
+            'status': 'rate_limited',
+            'message': 'Demasiadas peticiones. Intenta más tarde.',
+            'timestamp': datetime.now().isoformat()
+        }), 429
+    
     data_file = 'blackmamba_quantum_session.json'
     
     try:
@@ -137,7 +216,16 @@ def get_current_state():
 
 @app.route('/api/system_metrics')
 def get_system_metrics():
-    """API para métricas del sistema con información adicional"""
+    """API para métricas del sistema con rate limiting"""
+    # Rate limiting
+    from flask import request
+    client_id = request.remote_addr or 'unknown'
+    if not rate_limiter.is_allowed(client_id):
+        return jsonify({
+            'status': 'rate_limited',
+            'message': 'Demasiadas peticiones. Intenta más tarde.'
+        }), 429
+    
     try:
         # Obtener métricas de CPU con intervalo corto
         cpu_percent = psutil.cpu_percent(interval=0.1)
