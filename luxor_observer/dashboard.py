@@ -95,8 +95,7 @@ def get_current_state():
             logger.error(f"Error decodificando JSON: {e}")
             return jsonify({
                 'status': 'json_error',
-                'message': 'Error en formato de datos',
-                'detail': str(e)
+                'message': 'Error en formato de datos'
             }), 400
         except IOError as e:
             logger.error(f"Error leyendo archivo: {e}")
