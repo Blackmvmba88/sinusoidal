@@ -131,19 +131,34 @@ class LuxorQuantumObserver:
             self.stop_observation()
 
     def stop_observation(self) -> None:
+        """Detiene la observación de forma segura y guarda datos."""
+        if not self.is_running:
+            logger.debug("Observer ya estaba detenido")
+            return
+            
         self.is_running = False
         logger.info("⏸️  Deteniendo observación...")
+        
+        # Guardar datos de sesión antes de limpiar hilos
         try:
             self._save_session_data()
         except Exception as exc:
-            logger.exception("Error guardando sesión al detener: %s", exc)
-        # Intentar join de hilos para terminar limpiamente (timeout corto)
-        for t in getattr(self, "_threads", []):
-            try:
-                if t.is_alive():
-                    t.join(timeout=1.0)
-            except Exception:
-                logger.debug("Error uniendo hilo al detener")
+            logger.error("Error guardando sesión al detener: %s", exc)
+        
+        # Intentar join de hilos para terminar limpiamente
+        threads = getattr(self, "_threads", [])
+        if threads:
+            logger.debug("Esperando a %d hilos...", len(threads))
+            for i, t in enumerate(threads):
+                try:
+                    if t.is_alive():
+                        t.join(timeout=2.0)
+                        if t.is_alive():
+                            logger.warning("Hilo %d no terminó en tiempo esperado", i)
+                except RuntimeError as e:
+                    logger.debug("Error uniendo hilo %d: %s", i, e)
+        
+        logger.info("🌌 Observación detenida correctamente")
 
     def _keyboard_observer(self) -> None:
         """Observador de teclado (opcional)."""
@@ -225,50 +240,76 @@ class LuxorQuantumObserver:
         Si psutil está disponible, también lista procesos activos.
         """
         cache_seconds = 2
+        consecutive_errors = 0
+        max_consecutive_errors = 10
+        
         while self.is_running:
             try:
                 now = datetime.now()
-                if (now - self.last_app_check).seconds >= cache_seconds:
-                    script = (
-                        'tell application "System Events"\n'
-                        '    set frontApp to name of first application\n'
-                        '    process whose frontmost is true\n'
-                        '    return frontApp\n'
-                        'end tell'
-                    )
+                if (now - self.last_app_check).total_seconds() >= cache_seconds:
                     active_app = ""
+                    
+                    # Intentar obtener app activa via AppleScript
                     try:
+                        script = (
+                            'tell application "System Events"\n'
+                            '    set frontApp to name of first application '
+                            'process whose frontmost is true\n'
+                            '    return frontApp\n'
+                            'end tell'
+                        )
                         res = subprocess.run(
                             ["osascript", "-e", script],
                             capture_output=True,
                             text=True,
                             timeout=5,
+                            check=False,
                         )
-                        active_app = res.stdout.strip()
+                        if res.returncode == 0:
+                            active_app = res.stdout.strip()
+                            consecutive_errors = 0
                     except subprocess.TimeoutExpired:
-                        logger.warning(
-                            "AppleScript timeout obteniendo app activa"
-                        )
+                        consecutive_errors += 1
+                        if consecutive_errors <= 3:  # Solo reportar primeros errores
+                            logger.warning(
+                                "AppleScript timeout obteniendo app activa"
+                            )
+                    except (FileNotFoundError, OSError) as e:
+                        consecutive_errors += 1
+                        if consecutive_errors == 1:
+                            logger.error("osascript no disponible: %s", e)
 
+                    # Obtener lista de procesos activos
                     running_apps: List[str] = []
                     if psutil is not None:
                         try:
                             tmp: List[str] = []
-                            for p in psutil.process_iter(["name"]):
+                            for p in psutil.process_iter(["name"], ad_value=""):
                                 name = p.info.get("name")
-                                if name:
-                                    tmp.append(str(name))
+                                if name and isinstance(name, str):
+                                    tmp.append(name)
                             running_apps = tmp[:15]
-                        except Exception:
-                            running_apps = []
+                        except (psutil.Error, OSError):
+                            # Silenciar errores de psutil en modo normal
+                            logger.debug("Error obteniendo procesos")
 
                     self.current_apps = {
                         "active": active_app,
                         "running": running_apps,
                     }
                     self.last_app_check = now
-            except Exception:
-                logger.exception("Error en app monitor")
+                    
+                    # Si hay demasiados errores consecutivos, pausar este monitor
+                    if consecutive_errors >= max_consecutive_errors:
+                        logger.error(
+                            "Demasiados errores en app monitor, pausando..."
+                        )
+                        time.sleep(30)
+                        consecutive_errors = 0
+                        
+            except Exception as e:
+                logger.error("Error inesperado en app monitor: %s", e)
+                time.sleep(5)  # Pausa más larga en errores inesperados
 
             time.sleep(1)
 
@@ -315,57 +356,96 @@ class LuxorQuantumObserver:
             time.sleep(self.config.display_interval)
 
     def _calculate_keyboard_activity(self) -> float:
+        """Calcula la actividad del teclado en eventos por segundo."""
         if not self.keyboard_events:
             return 0.0
-        now = time.time()
-        window_start = now - self.config.activity_window
-        with self._events_lock:
-            recent = sum(
-                1
-                for e in self.keyboard_events
-                if e.get("timestamp", 0) >= window_start
-            )
-        return recent / max(1, self.config.activity_window)
+        
+        try:
+            now = time.time()
+            window_start = now - self.config.activity_window
+            
+            with self._events_lock:
+                recent = sum(
+                    1
+                    for e in self.keyboard_events
+                    if isinstance(e, dict) and e.get("timestamp", 0) >= window_start
+                )
+            
+            activity = recent / max(1, self.config.activity_window)
+            return max(0.0, activity)  # Asegurar que no sea negativo
+        except Exception as e:
+            logger.warning("Error calculando actividad de teclado: %s", e)
+            return 0.0
 
     def _calculate_mouse_activity(self) -> float:
+        """Calcula la actividad del mouse en eventos por segundo."""
         if not self.mouse_events:
             return 0.0
-        now = time.time()
-        window_start = now - self.config.activity_window
-        with self._events_lock:
-            recent = sum(
-                1
-                for e in self.mouse_events
-                if e.get("timestamp", 0) >= window_start
-            )
-        return recent / max(1, self.config.activity_window)
+        
+        try:
+            now = time.time()
+            window_start = now - self.config.activity_window
+            
+            with self._events_lock:
+                recent = sum(
+                    1
+                    for e in self.mouse_events
+                    if isinstance(e, dict) and e.get("timestamp", 0) >= window_start
+                )
+            
+            activity = recent / max(1, self.config.activity_window)
+            return max(0.0, activity)  # Asegurar que no sea negativo
+        except Exception as e:
+            logger.warning("Error calculando actividad de mouse: %s", e)
+            return 0.0
 
     def _detect_workflow_context(self) -> str:
-        active = (self.current_apps.get("active") or "").lower()
-        mapping = {
-            "coding": ["visual studio code", "vscode", "terminal", "iterm"],
-            "music": ["suno", "spotify", "garageband"],
-            "design": ["figma", "photoshop", "sketch", "blender"],
-            "browsing": ["chrome", "safari", "firefox"],
-        }
-        for ctx, apps in mapping.items():
-            if any(a in active for a in apps):
-                return ctx
-        return "general"
+        """Detecta el contexto de trabajo basado en la aplicación activa."""
+        try:
+            active = (self.current_apps.get("active") or "").lower()
+            if not active:
+                return "general"
+                
+            mapping = {
+                "coding": ["visual studio code", "vscode", "terminal", "iterm", 
+                          "pycharm", "intellij", "sublime", "atom", "vim"],
+                "music": ["suno", "spotify", "garageband", "itunes", "music"],
+                "design": ["figma", "photoshop", "sketch", "blender", "illustrator"],
+                "browsing": ["chrome", "safari", "firefox", "edge", "brave"],
+            }
+            
+            for ctx, apps in mapping.items():
+                if any(app in active for app in apps):
+                    return ctx
+                    
+            return "general"
+        except Exception as e:
+            logger.warning("Error detectando contexto de workflow: %s", e)
+            return "general"
 
     def _detect_consciousness_level(self, kb: float, mv: float) -> str:
-        total = kb + mv
-        if kb > 3 and mv > 2 and total > 6:
-            return "🔥 flow_state"
-        if kb > 1.5 and total > 3:
-            return "⚡ active_coding"
-        if mv > 1.5 and total > 2:
-            return "🎨 creative_exploration"
-        if total > 0.5:
-            return "💭 focused_work"
-        return "🌙 contemplative"
+        """Detecta el nivel de consciencia basado en actividad."""
+        try:
+            # Validar inputs
+            kb = max(0.0, float(kb))
+            mv = max(0.0, float(mv))
+            total = kb + mv
+            
+            if kb > 3 and mv > 2 and total > 6:
+                return "🔥 flow_state"
+            if kb > 1.5 and total > 3:
+                return "⚡ active_coding"
+            if mv > 1.5 and total > 2:
+                return "🎨 creative_exploration"
+            if total > 0.5:
+                return "💭 focused_work"
+            return "🌙 contemplative"
+        except (ValueError, TypeError) as e:
+            logger.warning("Error detectando nivel de consciencia: %s", e)
+            return "🌙 contemplative"
 
     def _save_session_data(self) -> None:
+        tmp = f"{self.config.data_file}.tmp"
         try:
             summary = {
                 "session_start": datetime.now().isoformat(),
@@ -379,7 +459,6 @@ class LuxorQuantumObserver:
                 },
             }
 
-            tmp = f"{self.config.data_file}.tmp"
             with open(tmp, "w", encoding="utf-8") as f:
                 json.dump(summary, f, indent=2, ensure_ascii=False)
 
@@ -392,13 +471,13 @@ class LuxorQuantumObserver:
             )
         except Exception:
             logger.exception("Error guardando sesión")
-            tmp = f"{self.config.data_file}.tmp"
+            # Cleanup temporary file if it exists
             if os.path.exists(tmp):
-                os.remove(tmp)
+                try:
+                    os.remove(tmp)
+                except OSError as e:
+                    logger.warning("No se pudo eliminar archivo temporal: %s", e)
             raise
-        if os.path.exists(tmp):
-            os.remove(tmp)
-        raise
 
 
 if __name__ == "__main__":
